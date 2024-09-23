@@ -1,0 +1,20 @@
+test1-9.f were early experiments done for the maxwell transmission problem,
+the updated version are from test11.f
+------------
+test1.f - check what value of \theta works in uniqueness proof
+test2.f - test matrix entry generator on sphere for given params
+test3.f - test eigenvalues for diagonal preconditioned matrix
+test4.f - test solver for one parameter \mu, \eps but n=0,20, 
+          and compute eigenvalues, and singular values for those
+          parameters too
+test5.f - compute condition number for parameter range (in epsm, mum frame)
+test6.f - compute condition number for parameter range in helsing frame
+test7.f - compute condition number and accuracy for plasmonic and
+    reverse plasmonic cases
+test8.f - find the plasmonic resonances
+test9.f - pde plasmonic resonances in non-uniqueness regime
+------------
+test10.f - verifies certain curl identities
+test11.f - Verify vector potential representation of plane-wave
+test12.f - build the various operators in the generalized debye case and test
+           them
