@@ -137,6 +137,15 @@ c
       call prin2('zmpm=*', zmpm, 4)
       call prin2('apms=*', apms, 8)
       call prin2('bpms=*', bpms, 8)
+
+      asigs = 0
+      bsigs = 0
+      dsigs = 0
+      zjsigs = 0
+      zmsigs = 0
+      esigs = 0
+      hsigs = 0
+      
       
       call build_ops(nmax, om, epm, zmpm, apms, bpms, asigs, 
      1  bsigs, dsigs, zjsigs, zmsigs, esigs, hsigs)
@@ -285,7 +294,8 @@ c
       zkm = om*sqrt(epm(2))*sqrt(zmpm(2))
       
       print *, "starting exterior kernels"
-
+      wnearp = 0
+      wnearm = 0
       call get_quadrature_corrections(npatches, norders, ixyzs, iptype,
      1  npts, srccoefs, srcvals, zkp, nnz, row_ptr, col_ind, iquad, 
      2  nquad, wnearp) 
@@ -666,7 +676,7 @@ c        electric field
           enddo
         enddo
         e(1:3,i) = e(1:3,i) + zn*srcvals(10:12,i)*zr(i)
-        call dzcross_prod3d(srcvals(10:12,i), zm(1,ipt), zvec) 
+        call dzcross_prod3d(srcvals(10:12,i), zm(1,i), zvec) 
         e(1:3,i) = e(1:3,i) + zvec(1:3)*ztan
       enddo
 
@@ -753,8 +763,14 @@ c          * the fourth kernel is \partial_{z} S_{k}
       
       allocate(uvs_src(2,npts), ipatch_id(npts))
       call prinf('iptype=*', iptype, npatches)
+      print *, "npts=",npts
+      print *, "nnz=",nnz
+      print *, "nquad=",nquad
+      print *, "iquad(end)=",iquad(nnz+1)
       call get_patch_id_uvs(npatches, norders, ixyzs, iptype, npts, 
      1  ipatch_id, uvs_src)
+      call prinf('ipatch_id=*',ipatch_id,npts)
+      call prin2('uvs_src=*',uvs_src,2*npts)
 
       ndd = 0
       ndi = 0
@@ -763,14 +779,16 @@ c          * the fourth kernel is \partial_{z} S_{k}
 
       eps = 1.0d-8
 
-      rfac = 1.25d0
+      rfac0 = 1.25d0
 
 
       allocate(wneartmp(nquad))
 
+      print *, "starting kernel 1"
       wneartmp(1:nquad) = 0
+      nd = 12
       call zgetnearquad_ggq_guru(npatches, norders, ixyzs, iptype, 
-     1  npts, srccoefs, srcvals, 12, npts, srcvals, ipatch_id, uvs_src,
+     1  npts, srccoefs, srcvals, nd, npts, srcvals, ipatch_id, uvs_src,
      2  eps, ipv, h3d_slp, ndd, dpars, ndz, zk, ndi, ipars, nnz, 
      3  row_ptr, col_ind, iquad, rfac0, nquad, wneartmp)
 C$OMP PARALLEL DO DEFAULT(SHARED)      
@@ -779,9 +797,10 @@ C$OMP PARALLEL DO DEFAULT(SHARED)
       enddo
 C$OMP END PARALLEL DO      
 
+      print *, "starting kernel 2"
       wneartmp(1:nquad) = 0
       call zgetnearquad_ggq_guru(npatches, norders, ixyzs, iptype, 
-     1  npts, srccoefs, srcvals, 12, npts, srcvals, ipatch_id, uvs_src,
+     1  npts, srccoefs, srcvals, nd, npts, srcvals, ipatch_id, uvs_src,
      2  eps, ipv, h3d_sgradx, ndd, dpars, ndz, zk, ndi, ipars, nnz, 
      3  row_ptr, col_ind, iquad, rfac0, nquad, wneartmp)
 C$OMP PARALLEL DO DEFAULT(SHARED)      
@@ -790,9 +809,10 @@ C$OMP PARALLEL DO DEFAULT(SHARED)
       enddo
 C$OMP END PARALLEL DO      
      
+      print *, "Starting kernel 3"
       wneartmp(1:nquad) = 0
       call zgetnearquad_ggq_guru(npatches, norders, ixyzs, iptype, 
-     1  npts, srccoefs, srcvals, 12, npts, srcvals, ipatch_id, uvs_src,
+     1  npts, srccoefs, srcvals, nd, npts, srcvals, ipatch_id, uvs_src,
      2  eps, ipv, h3d_sgrady, ndd, dpars, ndz, zk, ndi, ipars, nnz, 
      3  row_ptr, col_ind, iquad, rfac0, nquad, wneartmp)
 C$OMP PARALLEL DO DEFAULT(SHARED)      
@@ -801,9 +821,10 @@ C$OMP PARALLEL DO DEFAULT(SHARED)
       enddo
 C$OMP END PARALLEL DO      
 
+      print *, "starting kernel 4"
       wneartmp(1:nquad) = 0
       call zgetnearquad_ggq_guru(npatches, norders, ixyzs, iptype, 
-     1  npts, srccoefs, srcvals, 12, npts, srcvals, ipatch_id, uvs_src,
+     1  npts, srccoefs, srcvals, nd, npts, srcvals, ipatch_id, uvs_src,
      2  eps, ipv, h3d_sgradz, ndd, dpars, ndz, zk, ndi, ipars, nnz, 
      3  row_ptr, col_ind, iquad, rfac0, nquad, wneartmp)
 C$OMP PARALLEL DO DEFAULT(SHARED)      
@@ -949,7 +970,15 @@ c
       zkm = om*sqrt(epm(2))*sqrt(zmpm(2))
       call jhfuns(nmax, zkp, zjp, zdjp, zhp, zdhp, zjrp, zdjrp,
      1   zhrp, zdhrp)
-      call jhfuns(nmax, zkm, zjm, zdjp, zhm, zdhm, zjrm, zdjrm,
+      call prin2('zjp=*',zjp, 2*(nmax+1))
+      call prin2('zdjp=*',zdjp, 2*(nmax+1))
+      call prin2('zhp=*',zhp, 2*(nmax+1))
+      call prin2('zdhp=*',zdhp, 2*(nmax+1))
+      call prin2('zjrp=*',zjrp, 2*(nmax+1))
+      call prin2('zdjrp=*',zdjrp, 2*(nmax+1))
+      call prin2('zhrp=*',zhrp, 2*(nmax+1))
+      call prin2('zdhrp=*',zdhrp,2*(nmax+1))
+      call jhfuns(nmax, zkm, zjm, zdjm, zhm, zdhm, zjrm, zdjrm,
      1   zhrm, zdhrm)
 
       a2p = apms(1,1)
@@ -1119,9 +1148,14 @@ c
       ifder = 1
       rscale = 1.0d0
       
+      print *, "njh=", njh
 
       call besseljs3d(njh, zk, rscale, fjvals, ifder, fjder)
+      call prin2('fjvals=*',fjvals,2*(njh+1))
+      call prin2('fjder=*',fjder,2*(njh+1))
       call h3dall(njh, zk, rscale, fhvals, ifder, fhder)
+      call prin2('fjvals=*',fhvals,2*(njh+1))
+      call prin2('fjder=*',fhder,2*(njh+1))
       do i=0,njh
         frjvals(i) = zk*fjvals(i)
         frhvals(i) = zk*fhvals(i)
